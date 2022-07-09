@@ -1,5 +1,6 @@
 
 import telebot
+import config
 import random
 import datetime
 from datetime import time
@@ -13,9 +14,9 @@ nows = ("{}.{}.{}  {}:{}".format(now.day, now.month, now.year, now.hour, now.min
 date_for_db = ("{}-{}-{}  {}:{}".format(now.day, now.month, now.year, now.hour, now.minute+10))
 date_for_bomb = ("{}-{}-{}-{}.{}".format(now.day, now.month, now.year, now.hour, now.minute-10))
 update_date = ("{}-{}-{}-{}.{}".format(now.day, now.month, now.year, now.hour, now.minute))
-PayQiwi = QiwiP2P(auth_key="eyJ2ZXJzaW9uIjoiUDJQIiwiZGF0YSI6eyJwYXlpbl9tZXJjaGFudF9zaXRlX3VpZCI6IjJ6NGdmbC0wMCIsInVzZXJfaWQiOiI3OTYxODY0Nzg1NSIsInNlY3JldCI6ImZmMmU5ZjQ2ODEyZjFhMTZjY2MxMWIwYzQ0OTkwNzY5ZDkxYTFmZWNlNDFhMWY2ZDFlOTAyNDI3MzI0ZTFlNGIifX0=")
-db = DataBase("DB_telegram_bot.db")
-bot = telebot.TeleBot("5255550352:AAEaO9a78cVc3zWM3AmCC5RT58DeRQQimCs")
+PayQiwi = QiwiP2P(auth_key=config.QIWI_TOKEN)
+db = DataBase(config.DB)
+bot = telebot.TeleBot(config.API_TOKEN)
 def isNumber(_str):
     try:
         int(_str)
@@ -82,7 +83,14 @@ def handle_text(message):
     
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-    if call.data == "top_up" or call.data == "top_ups":
+    if call.data == "top_up":
+        # p = open("img.jpg", 'rb')#Добавляем фото и открываем его# Посылаем фото боту для отправки и подписываем его caption
+        bot.answer_callback_query(call.id, "Пополнение баланса от 10 рублей!", show_alert=True)#Уведомление пользователю
+        # bot.send_message(call.from_user.id, f"Введите сумму пополнения💰🤑:")
+        msg = bot.send_message(call.from_user.id, "Введите сумму пополнения💰🤑:")
+        bot.register_next_step_handler(msg, popolnenie_balansa)
+        
+    elif call.data == "top_ups":
         # p = open("img.jpg", 'rb')#Добавляем фото и открываем его# Посылаем фото боту для отправки и подписываем его caption
         bot.answer_callback_query(call.id, "Пополнение баланса от 10 рублей!", show_alert=True)#Уведомление пользователю
         # bot.send_message(call.from_user.id, f"Введите сумму пополнения💰🤑:")
@@ -155,20 +163,17 @@ def spam(message):
             bot.send_message(message.chat.id, "Номер введен корректно✅")
             user_money = db.user_money(message.from_user.id)
             data = db.data_user_zapusk(message.chat.id)
-            if data < date_for_bomb:
-                if user_money >= 5:
-                    db.add_data_zapuska(update_date, message.chat.id)
-                    bot.send_message(message.chat.id, "Бомбер запущен на 10 минут)")
-                    db.set_money(message.from_user.id, user_money-5)
-                    bomb.bomb(phone)
-                    bot.send_message(message.from_user.id, f"Спам номера <strong>{phone}</strong> закончен", parse_mode="html")
-                else:
-                    mar = types.InlineKeyboardMarkup()
-                    mar.add(types.InlineKeyboardButton("💳Пополнить баланс💳", callback_data="top_ups"))
-                    bot.send_message(message.chat.id, "Недостаточно средств\n<b>Один запуск стоит 5 рублей</n>", reply_markup=mar, parse_mode="html")
+            if user_money >= 5:
+                db.add_data_zapuska(update_date, message.chat.id)
+                bot.send_message(message.chat.id, "Бомбер запущен на 10 минут)")
+                db.set_money(message.from_user.id, user_money-5)
+                bomb.bomb(phone)
+                bot.send_message(message.from_user.id, f"Спам номера <strong>{phone}</strong> закончен", parse_mode="html")
             else:
-                bot.send_message(message.chat.id, "Вы уже запустили бомбер на 10 минут ожидайте завершения!")
-                
+                mar = types.InlineKeyboardMarkup()
+                mar.add(types.InlineKeyboardButton("💳Пополнить баланс💳", callback_data="top_ups"))
+                bot.send_message(message.chat.id, "Недостаточно средств\n<b>Один запуск стоит 5 рублей</b>", parse_mode="html", reply_markup=mar)
+      
         else:
             bot.send_message(message.chat.id, "🚫Номер телефона введен не верно🚫\n<i>Нажмите</i> <b>Начать бомбить</b> <i>еще раз,чтобы прейти к вводу номера</i>", parse_mode="html")
             
